@@ -30,7 +30,6 @@ const Widget = styled.div`
   background-color: #ffffff;
   border: 1px solid #ddd;
   cursor: grab;
-  color: black;
 
   &:active {
     cursor: grabbing;
@@ -41,11 +40,6 @@ const Widget = styled.div`
 const Image = styled.img`
   width: 100%;
   margin-bottom: 12px;
-  cursor: grab;
-
-  &:active {
-    cursor: grabbing;
-  }
 `;
 
 // Styling for the main content container
@@ -67,8 +61,8 @@ const DroppedText = styled.textarea`
 
 // Styling for an image with fixed dimensions
 const Img = styled.img`
-  width: 20vh;
-  height: 20vh;
+  width: 100%;
+  height: 100%;
 `;
 
 // Styling for the drop box for images
@@ -129,17 +123,17 @@ const App = () => {
 
   // State for managing widgets, image source, and text content
   const [widget, setWidget] = useState([]);
-  const [imageSrc, setImageSrc] = useState("");
-  const [Text, setText] = useState("Text");
-
+  const [imageStates, setImageStates] = useState([]);
+  const [storage, setStorage] = useState([]);
+  const [Text, setText] = useState([])
   // Handler for initiating text drag
   const handleOnDragText = (e, text) => {
     e.dataTransfer.setData("text", text);
   };
 
   // Handler for initiating image drag
-  const handleOnDragImg = (e, imgType) => {
-    e.dataTransfer.setData("imgType", imgType);
+  const handleOnDragImg = (e) => {
+    e.dataTransfer.setData("imgType", "Image");
   };
 
   // Handler for dropping elements into the page container
@@ -148,7 +142,7 @@ const App = () => {
     const textType = e.dataTransfer.getData("text");
     const imgType = e.dataTransfer.getData("imgType");
 
-    if (textType === "Text" && !imgType) {
+    if (textType === "Text") {
       setWidget([...widget, { type: textType, tag: "textarea" }]);
     } else {
       setWidget([...widget, { type: imgType, tag: "img" }]);
@@ -165,20 +159,19 @@ const App = () => {
     inputRef.current.click();
   };
 
-  // Handler for handling image change in file input
-  const handleImageChange = (e) => {
+  const handleImageChange = (e, ind) => {
     const file = e.target.files[0];
-    setImageSrc(file);
+
+    setImageStates((prevStates) => {
+      prevStates[ind] = file;
+      setStorage([...storage, file.name]);
+      return [...prevStates];
+    });
   };
 
   // Handler for saving text to local storage
   const handleClick = () => {
-    localStorage.setItem("Text", inputRef.current.value);
-  };
-
-  // Handler for saving image URL to local storage
-  const handleChange = (url) => {
-    localStorage.setItem("Img", url);
+    localStorage.setItem("Data", storage);
   };
 
   return (
@@ -201,7 +194,7 @@ const App = () => {
           src="./upload.jpg"
           alt=""
           draggable
-          onDragStart={(e) => handleOnDragImg(e, "Image")}
+          onDragStart={(e) => handleOnDragImg(e)}
         />
       </WidgetsContainer>
 
@@ -212,19 +205,22 @@ const App = () => {
             <DroppedText
               ref={inputRef}
               key={ind}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => {
+                setText((prevStates) => {
+                  const newStates = [...prevStates];
+                  newStates[ind] = e.target.value;
+                  setStorage([...storage, newStates[ind]]);
+                  return newStates;
+                });
+              }}
             >
-              {Text}
+              {Text[ind]}
             </DroppedText>
           ) : (
             <div style={{ display: "flex", alignItems: "center" }}>
               <DropBox onClick={handleImageClick}>
-                {imageSrc ? (
-                  <Img
-                    src={URL.createObjectURL(imageSrc)}
-                    alt=""
-                    onChange={handleChange(URL.createObjectURL(imageSrc))}
-                  />
+                {imageStates[ind] ? (
+                  <Img src={URL.createObjectURL(imageStates[ind])} alt="" />
                 ) : (
                   <Image src="./upload.jpg" alt="" />
                 )}
@@ -233,9 +229,8 @@ const App = () => {
                   style={{ display: "none" }}
                   id="files"
                   ref={inputRef}
-                  onChange={handleImageChange}
+                  onChange={(e) => handleImageChange(e, ind)}
                 />
-                {!imageSrc && <label for="files">Select file</label>}
               </DropBox>
             </div>
           )
